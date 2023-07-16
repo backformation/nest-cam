@@ -1,0 +1,10 @@
+[Unit]
+Description=Camera Recording Service
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=ROOT/cam/cam-record.py
+
+[Install]
+WantedBy=multi-user.target

@@ -26,4 +26,4 @@ while True:
 		delta = (device_time - system_time).total_seconds()
 		if abs(delta) > 5: # Yes, so adjust the system time
 			newdate = gutc[0:4] + gutc[5:7] + gutc[8:10] + ' ' + gutc[11:19]
-			os.system('sudo date -u --set="%s"' % newdate)
+			os.system('sudo date -u --set="{}"'.format(newdate))
