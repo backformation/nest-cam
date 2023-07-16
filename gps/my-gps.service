@@ -1,0 +1,9 @@
+[Unit]
+Description=GPS Time Synchronisation Service
+
+[Service]
+Type=simple
+ExecStart=ROOT/gps/gps-sync.py
+
+[Install]
+WantedBy=multi-user.target
