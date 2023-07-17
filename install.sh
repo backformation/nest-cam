@@ -34,7 +34,7 @@ fi
 if ! fgrep /dev/sd  /etc/fstab ; then
 	echo "" >> /etc/fstab
 	echo "# Add a fixed mount point for our external SSD" >> /etc/fstab
-	echo "/dev/sda1  /media/Camera   auto  users,noauto  0  2" >> /etc/fstab
+	echo "/dev/sda1  /media/Camera   auto  users,noauto,umask=0  0  2" >> /etc/fstab
 fi
 
 
