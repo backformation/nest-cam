@@ -37,7 +37,20 @@ end_Recording = datetime.datetime.utcnow()
 tmp_Recording = pathlib.Path('/tmp/Cam-IsRecording') # the name of the mp4 we're writing to, if any
 
 def DuringDaytime(system_time):
-	return True
+	# www.timeanddate.com says local time for "civil twilight" is:
+	#    06:25 - 18:44 (12:20)on 1st September
+	#    05:50 - 18:59 (13:09) on 1st October
+	#    05:18 - 19:19 (14:01) on 1st November
+	#    05:03 - 19:44 (14:41) on 1st December
+	# and solar noon is +/- 10 minutes around 12:30 local time.
+	# The simplest strategy is to record 14 hours around noon.
+	#
+	# That interval is 05:30-19:30 local time.
+	# But "system_time" is a UTC timestamp and Upington is always UTC+2.
+	# So our interval is 03:30-17:30 UTC.
+	midnight = system_time.replace(hour=0, minute=0, second=0, microsecond=0)
+	delta = (system_time - midnight).total_seconds()
+	return delta > (3*60+30)*60 and delta < (17*60+30)*60
 
 def StartRecording(system_time):
 	global pid_Recording
