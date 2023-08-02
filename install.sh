@@ -15,15 +15,11 @@ fi
 
 # Install services to /etc/systemd/system, inserting the correct directory path.
 
-if [ ! -f /etc/systemd/system/my-gps.service ] ; then
-	cp  code/my-gps.service  /etc/systemd/system/
-	sed -i "s|ROOT|${ROOT}|g"  /etc/systemd/system/my-gps.service
-fi
+cp  code/my-gps.service  /etc/systemd/system/
+sed -i "s|ROOT|${ROOT}|g"  /etc/systemd/system/my-gps.service
 
-if [ ! -f /etc/systemd/system/my-cam.service ] ; then
-	cp  code/my-cam.service  /etc/systemd/system/
-	sed -i "s|ROOT|${ROOT}|g"  /etc/systemd/system/my-cam.service
-fi
+cp  code/my-cam.service  /etc/systemd/system/
+sed -i "s|ROOT|${ROOT}|g"  /etc/systemd/system/my-cam.service
 
 systemctl daemon-reload
 systemctl enable my-gps
