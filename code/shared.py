@@ -7,15 +7,16 @@ import pathlib
 
 path_CamConfig  = pathlib.Path('/tmp/my-cam.json')     # The config file for the camera service
 path_Media      = pathlib.Path('/media/Camera')        # The directory where we store video files.
-path_IsStarting = pathlib.Path('/tmp/Cam-IsStarting')  # written by the controller to restart recording
-path_IsStarted  = pathlib.Path('/tmp/Cam-IsStarted')   # written by the service when recording has begun
-path_IsStopping = pathlib.Path('/tmp/Cam-IsStopping')  # written by the controller to pause recording
-path_IsStopped  = pathlib.Path('/tmp/Cam-IsStopped')   # written by the service when recording has stopped
-path_Recording  = pathlib.Path('/tmp/Cam-IsRecording') # the name of the mp4 we're writing to, if any
+path_IsStarted  = pathlib.Path('/tmp/Cam-IsStarted')   # exists when the service is running
+path_IsPausing  = pathlib.Path('/tmp/Cam-IsPausing')   # written by the controller to pause recording
+path_IsPaused   = pathlib.Path('/tmp/Cam-IsPaused')    # exists when recording is paused
+path_Recording  = pathlib.Path('/tmp/Cam-IsRecording') # exists when the service is writing an MP4
 path_GpsStatus  = pathlib.Path('/tmp/GPS-Status')      # written by the GPS service to report its status
 
 class Config :
 	def __init__(self) :
+		# The default start and stop time allow 7 hours either side of
+		# the solar noon at Upington (which is 12:30 +/- 10 minutes).
 		self.flip = False
 		self.start = datetime.time(hour=5, minute=30)
 		self.stop  = datetime.time(hour=19, minute=30)

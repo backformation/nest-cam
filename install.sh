@@ -8,9 +8,9 @@ ROOT=$(realpath ./)
 
 # Provide a place to save video data.
 
-if [ ! -d /media/Camera ] ; then
-	mkdir /media/Camera
-fi
+mkdir -p /media/Camera
+setfacl -dm o:rwX,m:rwX /media/Camera
+setfacl -m  o:rwX,m:rwX /media/Camera
 
 
 # Install services to /etc/systemd/system, inserting the correct directory path.

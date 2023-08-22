@@ -60,9 +60,11 @@ class Service :
 
 		if self.newText :
 			if self.newDate == "" :
-				path_GpsStatus.write_text("{0}: No time available".format(self.newMode))
+				status = "{0}: No time available".format(self.newMode)
 			else :
-				path_GpsStatus.write_text("{0}: Last clock sync at {1} UTC".format(self.newMode, self.newDate[11:]))
+				status = "{0}: Last clock sync at {1} UTC".format(self.newMode, self.newDate[11:])
+			path_GpsStatus.write_text(status)
+			print(status)
 			self.newText = False
 
 

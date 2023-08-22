@@ -24,21 +24,13 @@ class Service :
 
 	# Various useful predicates
 
-	def notStopping(self) :
-		return not path_IsStopping.exists()
+	def notPausing(self) :
+		return not path_IsPausing.exists()
 
-	def isStarting(self) :
-		return path_IsStarting.exists()
+	def notPaused(self) :
+		return not path_IsPaused.exists()
 
 	def isDaytime(self, local_time) :
-		# www.timeanddate.com says local time for "civil twilight" is:
-		#    06:25 - 18:44 (12:20)on 1st September
-		#    05:50 - 18:59 (13:09) on 1st October
-		#    05:18 - 19:19 (14:01) on 1st November
-		#    05:03 - 19:44 (14:41) on 1st December
-		# and solar noon is +/- 10 minutes around 12:30 local time.
-		# (South Africa is always UTC+2, but Upington is a little west.)
-		# The simplest strategy is to record 14 hours around solar noon.
 		midnight = local_time.replace(hour=0, minute=0, second=0, microsecond=0)
 		delta = (local_time - midnight).total_seconds()
 		start = (self.cfg.start.hour*60+self.cfg.start.minute)*60
@@ -57,10 +49,9 @@ class Service :
 		if delta < (self.sec_Recording/60):
 			self.end_Recording += datetime.timedelta(seconds=self.sec_Recording)
 
-		# The file on the SSD: /media/Camera/camera1_2023-07-16_12-00-00.mp4
-		host = os.uname().nodename
+		# The file on the SSD: /media/Camera/2023-07-16_12-00-00.mp4
 		when = local_time.strftime('%Y-%m-%d_%H-%M-%S')
-		file = '{}_{}.mp4'.format(host,when)
+		file = '{}.mp4'.format(when)
 		path = path_Media.joinpath(file)
 
 		# Kick off the capture process and remember "pid_Recording".
@@ -105,37 +96,40 @@ class Service :
 	# The main service loop
 	#
 	def main(self):
-		print('Camera Service starting')
-		path_IsStopped.unlink(missing_ok=True)
-		path_IsStarted.unlink(missing_ok=True)
-		path_IsStarting.touch(exist_ok=True)
+		path_Recording.unlink(missing_ok=True)
+		path_IsPaused.unlink(missing_ok=True)
+		path_IsStarted.touch(exist_ok=True)
+		print('Camera Service started')
 
-		# While starting, wait for the SSD to be mounted.
-		while self.notStopping() and self.isStarting():
-			# if not path_Media.is_mount():
-			#	os.system('mount {}'.format(path_Media))
-			path_IsStarting.replace(path_IsStarted)
-			print('Camera Service started')
-
-		# Once started, start recording to that disc.
-		while self.notStopping():
-			time.sleep(1)
-			local_time = datetime.datetime.now()
-			if self.isDaytime(local_time) and self.pid_Recording == 0:
-				self.startRecording(local_time)
-			if self.pid_Recording != 0 and local_time > self.end_Recording:
+		try:
+			while True:
+				time.sleep(1)
+				if self.notPausing():
+					# The controller wants us to run
+					local_time = datetime.datetime.now()
+					if self.isDaytime(local_time) and self.pid_Recording == 0:
+						self.startRecording(local_time)
+					if self.pid_Recording != 0 and local_time > self.end_Recording:
+						self.stopRecording()
+					path_IsPaused.unlink(missing_ok=True)
+				elif self.notPaused():
+					# The controller wants us to pause
+					print('Camera Service pausing')
+					if self.pid_Recording != 0:
+						self.stopRecording()
+					path_IsPaused.touch(exist_ok=True)
+				else:
+					# The controller wants us to remain paused
+					pass
+		except:
+			print('Camera Service interrupted')
+			if self.pid_Recording != 0:
 				self.stopRecording()
+			pass
 
-		# Stop recording and unmount the disc.
-		print('Camera Service stopping')
-		if self.pid_Recording != 0:
-			self.stopRecording()
-		# if path_Media.is_mount():
-		#	os.system('umount {}'.format(path_Media))
-
-		path_IsStarting.unlink(missing_ok=True)
 		path_IsStarted.unlink(missing_ok=True)
-		path_IsStopping.replace(path_IsStopped)
+		path_IsPaused.unlink(missing_ok=True)
+		path_Recording.unlink(missing_ok=True)
 		print('Camera Service stopped')
 		return 0
 

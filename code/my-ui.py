@@ -11,6 +11,14 @@ from curses import wrapper
 # Our own shared definitions
 from shared import *
 
+# Which "child window" has the focus?
+ID_NONE = 0
+ID_PAWS = 1
+ID_FLIP = 2
+ID_DAWN = 3
+ID_DUSK = 4
+ID_BITS = 5
+ID_LAST = 5
 
 def tweakTime(t, key) :
 	day = datetime.date.today()
@@ -31,7 +39,7 @@ def tweakTime(t, key) :
 class Window :
 	def __init__(self, screen) :
 		self.isClosing = False
-		self.focus = 0
+		self.focus = ID_NONE
 		self.window = screen
 		(self.height,self.width) = self.window.getmaxyx()
 		self.cfg = Config()
@@ -49,16 +57,18 @@ class Window :
 		self.window.addstr(0,1,text,curses.A_REVERSE)
 
 	def drawStatus(self) :
-		if self.focus==4 :
+		if self.focus==ID_BITS :
 			text = "Use arrow keys (up/down) to change the quality."
-		elif self.focus==3 :
+		elif self.focus==ID_DUSK :
 			text = "Use arrow keys (up/down) to change the stop time."
-		elif self.focus==2 :
+		elif self.focus==ID_DAWN :
 			text = "Use arrow keys (up/down) to change the start time."
-		elif self.focus==1 :
-			text = "Press SPACE or ENTER to flip the camera image"
+		elif self.focus==ID_FLIP :
+			text = "Press SPACE or ENTER to flip the camera image."
+		elif self.focus==ID_PAWS :
+			text = "Press SPACE or ENTER to pause or resume recording."
 		else :
-			text = "Press 'x' to exit, 'p' to pause, 'TAB' to move around"
+			text = "Press 'x' to exit, 'TAB' to move around."
 		self.window.addstr(self.height-2,1,text.ljust(self.width-2))
 
 	def drawGPS(self, row) :
@@ -72,30 +82,50 @@ class Window :
 		return 2 # two rows of text
 
 	def drawCamera(self, row) :
-		text = "Cam:  OK, night mode, not recording."
+		t0 = self.cfg.start.strftime("%H:%M")
+		t1 = self.cfg.stop.strftime("%H:%M")
+		#
+		if path_IsStarted.exists() :
+			if path_IsPaused.exists() :
+				text = "Cam:  Paused."
+			elif path_IsPausing.exists() :
+				text = "Cam:  Pausing, please wait."
+			elif path_Recording.exists() :
+				mp4 = path_Recording.read_text()
+				text = "Cam:  Running, recording " + mp4
+			else :
+				text = "Cam:  Running, but not recording."
+		else :
+			text = "Cam:  Missing, which is bad."
 		self.drawRow(text, row)
+		if self.focus==ID_PAWS :
+			self.window.chgat(row, 9, 7, curses.A_REVERSE)
+		#
 		text = "      Flip image:    [{0}]".format("yes" if self.cfg.flip else "no")
 		self.drawRow(text, row+1)
-		if self.focus==1 :
+		if self.focus==ID_FLIP :
 			self.window.chgat(row+1, 25, 3 if self.cfg.flip else 2, curses.A_REVERSE)
-		text = "      Morning start: [{0}] (noon - 7 hours)".format(self.cfg.start.strftime("%H:%M"))
+		#
+		text = "      Morning start: [{0}]".format(t0)
 		self.drawRow(text, row+2)
-		if self.focus==2 :
+		if self.focus==ID_DAWN :
 			self.window.chgat(row+2, 25, 5, curses.A_REVERSE)
-		text = "      Evening stop:  [{0}] (noon + 7 hours)".format(self.cfg.stop.strftime("%H:%M"))
+		#
+		text = "      Evening stop:  [{0}]".format(t1)
 		self.drawRow(text, row+3)
-		if self.focus==3 :
+		if self.focus==ID_DUSK :
 			self.window.chgat(row+3, 25, 5, curses.A_REVERSE)
+		#
 		text = "      Quality:       [{0:.1f}] Mbit/s".format(self.cfg.bitrate/1000000)
 		self.drawRow(text, row+4)
-		if self.focus==4 :
+		if self.focus==ID_BITS :
 			self.window.chgat(row+4, 25, 3, curses.A_REVERSE)
 		perHour = (self.cfg.bitrate*3600)/(8*1024*1024*1024)
 		text = "                   = {0:.2f} GB/hour".format(perHour)
 		self.drawRow(text, row+5)
 		day = (self.cfg.stop.hour - self.cfg.start.hour)*3600 + (self.cfg.stop.minute - self.cfg.start.minute)*60
 		perDay = (self.cfg.bitrate*day)/(8*1024*1024*1024)
-		text = "                   = {0:.1f} GB for daytime".format(perDay)
+		text = "                   = {0:.1f} GB for the day {1}-{2}".format(perDay,t0,t1)
 		self.drawRow(text, row+6)
 		return 7
 
@@ -134,28 +164,34 @@ class Window :
 		isChanged = False
 		if key==9 : # TAB
 			self.focus += 1
-			if self.focus > 4 :
-				self.focus = 0
-		elif self.focus==1 :
+			if self.focus > ID_LAST :
+				self.focus = ID_NONE
+		elif self.focus==ID_PAWS :
+			if key==curses.KEY_ENTER or key==10 or key==13 or key==32 :
+				if path_IsPausing.exists():
+					path_IsPausing.unlink(missing_ok=True)
+				else:
+					path_IsPausing.touch(exist_ok=True)
+		elif self.focus==ID_FLIP :
 			flip = self.cfg.flip
 			if key==curses.KEY_ENTER or key==10 or key==13 or key==32 :
 				flip = not flip
 			if self.cfg.flip != flip :
 				self.cfg.flip = flip
 				isChanged = True
-		elif self.focus==2 :
+		elif self.focus==ID_DAWN :
 			dawn = self.cfg.start
 			dawn = tweakTime(dawn, key)
 			if self.cfg.start != dawn :
 				self.cfg.start = dawn
 				isChanged = True
-		elif self.focus==3 :
+		elif self.focus==ID_DUSK :
 			dusk = self.cfg.stop
 			dusk = tweakTime(dusk, key)
 			if self.cfg.stop != dusk :
 				self.cfg.stop = dusk
 				isChanged = True
-		elif self.focus==4 :
+		elif self.focus==ID_BITS :
 			rate = self.cfg.bitrate
 			if key==curses.KEY_LEFT or key==curses.KEY_UP :
 				# lower the bitrate, but not below 1 Mbit/s
@@ -168,14 +204,17 @@ class Window :
 			if self.cfg.bitrate != rate :
 				self.cfg.bitrate = rate
 				isChanged = True
-		# If stuff changed, we update the JSON
+		# If configuration parameters changed, we update the JSON
 		if isChanged :
 			self.cfg.save()
 		# It's always harmless to re-draw
 		self.draw()
 
 	def onTimer(self, t) :
-		self.drawGPS(2)
+		if int(t) % 5 == 0 :
+			self.draw()
+		else :
+			self.drawGPS(2)
 
 def main(stdscr) :
 	# Initial sanity check
