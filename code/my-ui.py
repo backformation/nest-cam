@@ -77,7 +77,7 @@ class Window :
 		except :
 			text = "GPS:  The service is not running, which is bad."
 		self.drawRow(text, row)
-		text = "      Current local time is {0}".format( time.strftime("%H:%M:%S") )
+		text = "      Current time is {0}".format( time.strftime("%Y-%m-%d %H:%M:%S (%z)") )
 		self.drawRow(text, row+1)
 		return 2 # two rows of text
 

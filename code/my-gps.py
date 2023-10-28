@@ -53,16 +53,16 @@ class Service :
 			# Have we drifted?
 			delta = (device_time - system_time).total_seconds()
 			if self.newDate=="" or abs(delta) > 5 :
-				self.newDate = "{0}/{1}/{2} {3}".format(gutc[0:4], gutc[5:7], gutc[8:10], gutc[11:19])
-				if abs(delta) > 5: # Yes, so adjust the system time
-					os.system('sudo date -u --set="{0}"'.format(self.newDate))
+				self.newDate = "{0}-{1}-{2}T{3}Z".format(gutc[0:4], gutc[5:7], gutc[8:10], gutc[11:19])
+				os.system('sudo date --set="{0}"'.format(self.newDate))
+				self.newDate = time.strftime("%Y-%m-%d %H:%M:%S (%z)")
 				self.newText = True
 
 		if self.newText :
 			if self.newDate == "" :
-				status = "{0}: No time available".format(self.newMode)
+				status = "No time available yet ({0})".format(self.newMode)
 			else :
-				status = "{0}: Last clock sync at {1} UTC".format(self.newMode, self.newDate[11:])
+				status = "Last clock sync {1}".format(self.newMode, self.newDate)
 			path_GpsStatus.write_text(status)
 			print(status)
 			self.newText = False
